@@ -15,7 +15,7 @@ async def benchmark_events(
     # Test non-blocking events
     start = time.time()
     for i in range(n_events):
-        await Lotus.track_event(
+        await Lotus.async_track_event(
             customer_id = customer_id,
             event_name = f"benchmark_event_non_blocking_{i}",
             properties = {"benchmark_size": n_events, "benchmark_index": i, "benchmark_id": str(uuid.uuid4())},

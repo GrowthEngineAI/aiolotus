@@ -17,7 +17,7 @@ class LotusCustomer(ApiModel):
     properties: Optional[Dict] = {}
     behavior_on_existing: Optional[ExistingCustomerBehavior] = None
 
-    async def validate_params(
+    def validate_params(
         self,
         api_method: ApiMethod,
         items: Optional[List[Type['LotusCustomer']]] = None,

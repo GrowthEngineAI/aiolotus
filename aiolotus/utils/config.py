@@ -10,8 +10,8 @@ class LotusWorkerSettings(BaseSettings):
     # lower to leave space for extra data that will be added later, eg. "sentAt".
     batch_size_limit: Optional[int] = 475000
 
-    flush_at: Optional[int] = 100
-    flush_interval: Optional[float] = 0.5
+    flush_at: Optional[int] = 10 # 20 is safe for nginx
+    flush_interval: Optional[float] = 1.5
     max_queue_size: Optional[int] = 1000
 
     class Config:
@@ -36,8 +36,8 @@ class LotusSettings(BaseSettings):
     # Fallsback to num_workers if not set
     num_pool_workers: Optional[int] = None
 
-    ignore_errors: Optional[bool] = True
-    debug_enabled: Optional[bool] = False
+    ignore_errors: Optional[bool] = False
+    debug_enabled: Optional[bool] = True
 
     timeout: Optional[int] = 10
     max_retries: Optional[int] = 3

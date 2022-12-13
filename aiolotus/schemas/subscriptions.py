@@ -23,7 +23,7 @@ class LotusSubscription(ApiModel):
     turn_off_auto_renew: Optional[bool] = None
     replace_immediately_type: Optional[ReplaceType] = None
 
-    async def validate_params(
+    def validate_params(
         self,
         api_method: ApiMethod,
         items: Optional[List[Type['LotusSubscription']]] = None,

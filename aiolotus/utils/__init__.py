@@ -23,5 +23,7 @@ from aiolotus.utils.funcs import (
     ungzipify,
     async_request,
     retryable_async_request,
+    sync_request,
+    retryable_sync_request,
     ObjectEncoder,
 )

@@ -23,7 +23,7 @@ class LotusPlan(ApiModel):
     parent_plan_id: Optional[str] = None
     target_customer_id: Optional[str] = None
 
-    async def validate_params(
+    def validate_params(
         self,
         api_method: ApiMethod,
         items: Optional[List[Type['LotusPlan']]] = None,

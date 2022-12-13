@@ -20,7 +20,9 @@ from aiolotus.utils.helpers import (
     stringify_id,
 )
 from aiolotus.utils.funcs import (
+    gzip_data,
     gzipify,
+    ungzip_data,
     ungzipify,
 )
 
@@ -37,7 +39,7 @@ class ApiModel(BaseModel):
     """Base model for API Operations."""
     item_id: Optional[str] = None
 
-    async def validate_params(
+    def validate_params(
         self,
         api_method: ApiMethod,
         items: Optional[List[Type['ApiModel']]] = None,
@@ -47,15 +49,41 @@ class ApiModel(BaseModel):
         """Validate the message and ensure all required fields are present."""
         return
     
-    async def prepare_list(
+    async def async_validate_params(
+        self,
+        api_method: ApiMethod,
+        items: Optional[List[Type['ApiModel']]] = None,
+        itemized: bool = False,
+        **kwargs
+    ) -> None:
+        """Validate the message and ensure all required fields are present."""
+        return self.validate_params(
+            api_method = api_method,
+            items = items,
+            itemized = itemized,
+            **kwargs
+        )
+    
+    def prepare_list(
         self,
         itemized: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """Prepare the body of the LIST request."""
         return self.dict(exclude_none = True)
+    
+    async def async_prepare_list(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the LIST request."""
+        return self.prepare_list(
+            itemized = itemized,
+            **kwargs
+        )
 
-    async def prepare_create(
+    def prepare_create(
         self,
         itemized: bool = False,
         **kwargs
@@ -63,7 +91,18 @@ class ApiModel(BaseModel):
         """Prepare the body of the CREATE request."""
         return self.dict(exclude_none = True)
     
-    async def prepare_create_batch(
+    async def async_prepare_create(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the CREATE request."""
+        return self.prepare_create(
+            itemized = itemized,
+            **kwargs
+        )
+    
+    def prepare_create_batch(
         self,
         items: List[Type['ApiModel']],
         itemized: bool = False,
@@ -73,16 +112,46 @@ class ApiModel(BaseModel):
         data = self.dict(exclude_none = True)
         data['items'] = [item.dict(exclude_none = True) for item in items]
         return data
-
-    async def prepare_event(
+    
+    async def async_prepare_create_batch(
         self,
+        items: List[Type['ApiModel']],
         itemized: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
-        """Prepare the body of the EVENT request."""
-        return self.dict(exclude_none = True)
+        """Prepare the body of the CREATE_BATCH request."""
+        return self.prepare_create_batch(
+            items = items,
+            itemized = itemized,
+            **kwargs
+        )
 
-    async def prepare_get(
+    def prepare_event(
+        self,
+        itemized: bool = False,
+        blocking: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the EVENT request."""
+        if blocking: return self.dict(exclude_none = True)
+        return {
+            'batch': [self.dict(exclude_none = True)]
+        }
+
+    async def async_prepare_event(
+        self,
+        itemized: bool = False,
+        blocking: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the EVENT request."""
+        return self.prepare_event(
+            itemized = itemized,
+            blocking = blocking,
+            **kwargs
+        )
+
+    def prepare_get(
         self,
         itemized: bool = False,
         **kwargs
@@ -90,7 +159,18 @@ class ApiModel(BaseModel):
         """Prepare the body of the GET request."""
         return self.dict(exclude_none = True)
     
-    async def prepare_get_all(
+    async def async_prepare_get(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the GET request."""
+        return self.prepare_get(
+            itemized = itemized,
+            **kwargs
+        )
+    
+    def prepare_get_all(
         self,
         itemized: bool = False,
         **kwargs
@@ -99,9 +179,20 @@ class ApiModel(BaseModel):
         Prepare the body of the GET_ALL request.
         Routes to LIST method.
         """
-        return await self.prepare_list(itemized = itemized, **kwargs)
+        return self.prepare_list(itemized = itemized, **kwargs)
 
-    async def prepare_get_detail(
+    async def async_prepare_get_all(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Prepare the body of the GET_ALL request.
+        Routes to LIST method.
+        """
+        return await self.async_prepare_list(itemized = itemized, **kwargs)
+
+    def prepare_get_detail(
         self,
         itemized: bool = False,
         **kwargs
@@ -110,17 +201,36 @@ class ApiModel(BaseModel):
         Prepare the body of the GET Detail request.
         Routes to GET method.
         """
-        return await self.prepare_get(itemized = itemized, **kwargs)
+        return self.prepare_get(itemized = itemized, **kwargs)
 
-    async def prepare_update(
+    async def async_prepare_get_detail(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Prepare the body of the GET Detail request.
+        Routes to GET method.
+        """
+        return await self.async_prepare_get(itemized = itemized, **kwargs)
+    
+    def prepare_update(
         self,
         itemized: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """Prepare the body of the UPDATE request."""
         return self.dict(exclude_none = True)
+
+    async def async_prepare_update(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the UPDATE request."""
+        return self.prepare_update(itemized = itemized, **kwargs)
     
-    async def prepare_delete(
+    def prepare_delete(
         self,
         itemized: bool = False,
         **kwargs
@@ -128,7 +238,15 @@ class ApiModel(BaseModel):
         """Prepare the body of the DELETE request."""
         return self.dict(exclude_none = True)
     
-    async def prepare_change(
+    async def async_prepare_delete(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the DELETE request."""
+        return self.prepare_delete(itemized = itemized, **kwargs)
+    
+    def prepare_change(
         self,
         itemized: bool = False,
         **kwargs
@@ -137,9 +255,20 @@ class ApiModel(BaseModel):
         Prepare the body of the CHANGE request.
         Routes to UPDATE method.
         """
-        return await self.prepare_update(itemized = itemized, **kwargs)
+        return self.prepare_update(itemized = itemized, **kwargs)
     
-    async def prepare_cancel(
+    async def async_prepare_change(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Prepare the body of the CHANGE request.
+        Routes to UPDATE method.
+        """
+        return await self.async_prepare_update(itemized = itemized, **kwargs)
+    
+    def prepare_cancel(
         self,
         itemized: bool = False,
         **kwargs
@@ -148,49 +277,107 @@ class ApiModel(BaseModel):
         Prepare the body of the CANCEL request.
         Routes to DELETE method.
         """
-        return await self.prepare_delete(itemized = itemized, **kwargs)
+        return self.prepare_delete(itemized = itemized, **kwargs)
     
-    async def prepare_msg(
+    async def async_prepare_cancel(
+        self,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Prepare the body of the CANCEL request.
+        Routes to DELETE method.
+        """
+        return await self.async_prepare_delete(itemized = itemized, **kwargs)
+    
+    def prepare_msg(
         self,
         api_method: ApiMethod,
         itemized: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """Prepare the body of the API request."""
-        await self.validate_params(api_method = api_method, itemized = itemized, **kwargs)
+        self.validate_params(api_method = api_method, itemized = itemized, **kwargs)
 
         if api_method == ApiMethod.LIST:
-            return await self.prepare_list(itemized = itemized, **kwargs)
+            return self.prepare_list(itemized = itemized, **kwargs)
         if api_method == ApiMethod.CREATE:
-            return await self.prepare_create(itemized = itemized, **kwargs)
+            return self.prepare_create(itemized = itemized, **kwargs)
         if api_method == ApiMethod.CREATE_BATCH:
-            return await self.prepare_create_batch(itemized = itemized, **kwargs)
+            return self.prepare_create_batch(itemized = itemized, **kwargs)
         if api_method in {ApiMethod.EVENT, ApiMethod.TRACK}:
-            return await self.prepare_event(itemized = itemized, **kwargs)
+            return self.prepare_event(itemized = itemized, **kwargs)
         if api_method == ApiMethod.GET:
-            return await self.prepare_get(itemized = itemized, **kwargs)
+            return self.prepare_get(itemized = itemized, **kwargs)
         if api_method == ApiMethod.GET_ALL:
-            return await self.prepare_get_all(itemized = itemized, **kwargs)
+            return self.prepare_get_all(itemized = itemized, **kwargs)
         if api_method == ApiMethod.GET_DETAIL:
-            return await self.prepare_get_detail(itemized = itemized, **kwargs)
+            return self.prepare_get_detail(itemized = itemized, **kwargs)
         if api_method == ApiMethod.UPDATE:
-            return await self.prepare_update(itemized = itemized, **kwargs)
+            return self.prepare_update(itemized = itemized, **kwargs)
         if api_method == ApiMethod.DELETE:
-            return await self.prepare_delete(itemized = itemized, **kwargs)
+            return self.prepare_delete(itemized = itemized, **kwargs)
         if api_method == ApiMethod.CHANGE:
-            return await self.prepare_change(itemized = itemized, **kwargs)
+            return self.prepare_change(itemized = itemized, **kwargs)
         if api_method == ApiMethod.CANCEL:
-            return await self.prepare_cancel(itemized = itemized, **kwargs)
+            return self.prepare_cancel(itemized = itemized, **kwargs)
+        raise ValueError(f"[{self.__class__.__name__}] Invalid API method: {api_method}")
+    
+    async def async_prepare_msg(
+        self,
+        api_method: ApiMethod,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the API request."""
+        await self.async_validate_params(api_method = api_method, itemized = itemized, **kwargs)
+
+        if api_method == ApiMethod.LIST:
+            return await self.async_prepare_list(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.CREATE:
+            return await self.async_prepare_create(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.CREATE_BATCH:
+            return await self.async_prepare_create_batch(itemized = itemized, **kwargs)
+        if api_method in {ApiMethod.EVENT, ApiMethod.TRACK}:
+            return await self.async_prepare_event(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.GET:
+            return await self.async_prepare_get(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.GET_ALL:
+            return await self.async_prepare_get_all(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.GET_DETAIL:
+            return await self.async_prepare_get_detail(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.UPDATE:
+            return await self.async_prepare_update(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.DELETE:
+            return await self.async_prepare_delete(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.CHANGE:
+            return await self.async_prepare_change(itemized = itemized, **kwargs)
+        if api_method == ApiMethod.CANCEL:
+            return await self.async_prepare_cancel(itemized = itemized, **kwargs)
         raise ValueError(f"[{self.__class__.__name__}] Invalid API method: {api_method}")
 
-    async def prepare_body(
+    def prepare_body(
         self,
         api_method: ApiMethod,
         itemized: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """Prepare the body of the request."""
-        msg = await self.prepare_msg(api_method = api_method, itemized = itemized, **kwargs)
+        msg = self.prepare_msg(api_method = api_method, itemized = itemized, **kwargs)
+        msg['library'] = 'aiolotus'
+        msg['library_version'] = VERSION
+        if "idempotency_id" in msg: msg["idempotency_id"] = stringify_id(msg.get("idempotency_id", None))
+        if "customer_id" in msg: msg["customer_id"] = stringify_id(msg.get("customer_id", None))
+        return msg
+    
+    async def async_prepare_body(
+        self,
+        api_method: ApiMethod,
+        itemized: bool = False,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Prepare the body of the request."""
+        msg = await self.async_prepare_msg(api_method = api_method, itemized = itemized, **kwargs)
         msg['library'] = 'aiolotus'
         msg['library_version'] = VERSION
         if "idempotency_id" in msg: msg["idempotency_id"] = stringify_id(msg.get("idempotency_id", None))
@@ -205,14 +392,84 @@ class BaseOperation(BaseModel):
     api_model: Type[ApiModel]
     itemized: bool = False
     
-    async def prepare_msg(
+    def prepare_msg(
         self,
         **kwargs
     ) -> Dict[str, Any]:
         msg = self.api_model(**kwargs)
-        return await msg.prepare_body(api_method = self.api_method, itemized = self.itemized)
+        return msg.prepare_body(api_method = self.api_method, itemized = self.itemized)
 
-    async def send(
+    async def async_prepare_msg(
+        self,
+        **kwargs
+    ) -> Dict[str, Any]:
+        msg = self.api_model(**kwargs)
+        return await msg.async_prepare_body(api_method = self.api_method, itemized = self.itemized)
+
+    def send(
+        self, 
+        client: aiohttpx.Client,
+        msg: Dict[str, Any],
+        headers: Dict[str, Any],
+        gzip: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        ignore_errors: Optional[bool] = None,
+        **kwargs
+    ) -> httpx.Response:
+
+        # Sends the request
+        endpoint_url = self.url
+        if msg.get('item_id'): 
+            endpoint_url += f"/{msg.get('item_id')}/"
+            del msg['item_id']
+        
+        # request = self.prepare_request(msg, **kwargs)
+        if timeout is None: timeout = settings.timeout
+        if gzip is None: gzip = settings.gzip_enabled
+        if ignore_errors is None: ignore_errors = settings.ignore_errors
+
+        msg["sentAt"] = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=tzutc()).isoformat()
+        data = None
+        if self.http_method != HttpMethod.GET:
+            data = json.dumps(msg, cls = ObjectEncoder)
+            if gzip: 
+                headers["Content-Encoding"] = "gzip"
+                data = gzip_data(data)
+        
+        res = client.request(
+            method = self.http_method.value,
+            url = endpoint_url,
+            headers = headers,
+            params = msg if self.http_method == HttpMethod.GET else None,
+            data = data,
+            timeout = timeout,
+        )
+        if res.status_code in [200, 201]:
+            if settings.debug_enabled:
+                logger.info(f"[{res.status_code}] Made API Call: {self.http_method.value} to {endpoint_url} successfully.")
+            return res
+        if gzip: 
+            try:
+                res._content = ungzip_data(res.content)
+            except Exception as e:
+                logger.error(f"Failed to decompress response: {e}")
+
+        try:
+            payload = res.json()
+            if settings.debug_enabled:
+                logger.info(f"Received response: {payload}")
+            if not ignore_errors:
+                raise APIError(res.status_code, payload)
+            # Return it anyways
+            return res
+        except ValueError as e:
+            logger.error(f"failed to parse response: {res.text}")
+            if not ignore_errors:
+                raise APIError(res.status_code, res.text) from e
+            # Return it anyways
+            return res
+    
+    async def async_send(
         self, 
         client: aiohttpx.Client,
         msg: Dict[str, Any],
@@ -275,7 +532,7 @@ class BaseOperation(BaseModel):
             # Return it anyways
             return res
 
-    async def retryable_send(
+    def retryable_send(
         self, 
         client: aiohttpx.Client,
         msg: Dict[str, Any],
@@ -290,14 +547,51 @@ class BaseOperation(BaseModel):
         @backoff.on_exception(
             backoff.expo, Exception, max_tries = retries + 1, giveup = fatal_exception
         )
-        async def _send():
-            return await self.send(
+        def _send():
+            return self.send(
                 client = client, msg = msg, headers = headers, gzip = gzip, timeout = timeout, ignore_errors = ignore_errors, **kwargs
             )
         
-        return await _send()
+        return _send()
+    
+    async def async_retryable_send(
+        self, 
+        client: aiohttpx.Client,
+        msg: Dict[str, Any],
+        headers: Dict[str, Any],
+        gzip: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        ignore_errors: Optional[bool] = None,
+        retries: Optional[int] = None,
+        **kwargs
+    ) -> httpx.Response:
+        if retries is None: retries = settings.max_retries
+        @backoff.on_exception(
+            backoff.expo, Exception, max_tries = retries + 1, giveup = fatal_exception
+        )
+        async def _async_send():
+            return await self.async_send(
+                client = client, msg = msg, headers = headers, gzip = gzip, timeout = timeout, ignore_errors = ignore_errors, **kwargs
+            )
+        return await _async_send()
 
-    async def enqueue(
+    def enqueue(
+        self,
+        queue: asyncio.Queue,
+        msg: Dict[str, Any],
+        wait: Optional[bool] = True,
+        **kwargs
+    ):
+        # Must use put_nowait since this isnt a coro
+        try:
+            queue.put_nowait(msg)
+            return True, msg
+
+        except asyncio.queues.QueueFull:
+            logger.error("queue is full")
+            return False, msg
+    
+    async def async_enqueue(
         self,
         queue: asyncio.Queue,
         msg: Dict[str, Any],
@@ -317,7 +611,7 @@ class BaseOperation(BaseModel):
             logger.error("queue is full")
             return False, msg
     
-    async def execute(
+    def execute(
         self,
         client: aiohttpx.Client,
         msg: Dict[str, Any],
@@ -336,11 +630,11 @@ class BaseOperation(BaseModel):
         # returns the response
         if blocking:
             if retryable:
-                res = await self.retryable_send(
+                res = self.retryable_send(
                     client = client, msg = msg, headers = headers, gzip = gzip, ignore_errors = ignore_errors, timeout = timeout, retries = retries, **kwargs
                 )
             else:
-                res = await self.send(
+                res = self.send(
                     client = client, msg = msg, headers = headers, gzip = gzip, ignore_errors = ignore_errors, timeout = timeout, **kwargs
                 )
             try:
@@ -348,6 +642,41 @@ class BaseOperation(BaseModel):
             except Exception as e:
                 return res.text
         
-        return await self.enqueue(
+        return self.enqueue(
+            queue = queue, msg = msg, wait = wait, **kwargs
+        )
+
+    async def async_execute(
+        self,
+        client: aiohttpx.Client,
+        msg: Dict[str, Any],
+        headers: Dict[str, Any],
+        gzip: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        ignore_errors: Optional[bool] = None,
+        retryable: Optional[bool] = False,
+        retries: Optional[int] = None,
+        queue: Optional[asyncio.Queue] = None,
+        blocking: Optional[bool] = True,
+        wait: Optional[bool] = True,
+        **kwargs
+    ):
+        # Executes the request
+        # returns the response
+        if blocking:
+            if retryable:
+                res = await self.async_retryable_send(
+                    client = client, msg = msg, headers = headers, gzip = gzip, ignore_errors = ignore_errors, timeout = timeout, retries = retries, **kwargs
+                )
+            else:
+                res = await self.async_send(
+                    client = client, msg = msg, headers = headers, gzip = gzip, ignore_errors = ignore_errors, timeout = timeout, **kwargs
+                )
+            try:
+                return res.json()
+            except Exception as e:
+                return res.text
+        
+        return await self.async_enqueue(
             queue = queue, msg = msg, wait = wait, **kwargs
         )

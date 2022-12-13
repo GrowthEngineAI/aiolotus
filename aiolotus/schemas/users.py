@@ -14,7 +14,7 @@ class LotusUser(ApiModel):
     company_name: Optional[str] = None
     organization_id: Optional[str] = None
 
-    async def validate_params(
+    def validate_params(
         self,
         api_method: ApiMethod,
         items: Optional[List[Type['LotusUser']]] = None,

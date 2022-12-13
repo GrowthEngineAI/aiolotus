@@ -1,5 +1,7 @@
+
 import six
 import numbers
+import inspect
 from decimal import Decimal
 from dateutil.tz import tzlocal, tzutc
 from datetime import date, datetime, timedelta
@@ -15,7 +17,18 @@ __all__ = [
     'clean',
     'require',
     'stringify_id',
+    'full_name',
 ]
+
+def full_name(func, follow_wrapper_chains=True):
+    """
+    Return full name of `func` by adding the module and function name.
+
+    If this function is decorated, attempt to unwrap it till the original function to use that
+    function name by setting `follow_wrapper_chains` to True.
+    """
+    if follow_wrapper_chains: func = inspect.unwrap(func)
+    return f'{func.__module__}.{func.__qualname__}'
 
 def is_naive(dt: datetime):
     """Determines if a given datetime.datetime is naive."""

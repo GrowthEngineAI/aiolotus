@@ -30,7 +30,7 @@ class LotusMetric(ApiModel):
     property_name: Optional[str] = None
     is_cost_metric: Optional[bool] = None
 
-    async def validate_metric_type_counter(
+    def validate_metric_type_counter(
         self,
         **kwargs
     ):
@@ -43,7 +43,17 @@ class LotusMetric(ApiModel):
         if self.granularity is None: self.granularity = MetricGranularity.total
         assert self.usage_aggregation_type in [MetricAggregation.sum, MetricAggregation.counter, MetricAggregation.max, MetricAggregation.unique], "usage_aggregation_type must be one of sum, counter, max, unique"
 
-    async def validate_metric_type_rate(
+    async def async_validate_metric_type_counter(
+        self,
+        **kwargs
+    ):
+        """
+        Validate the metric type is counter
+        """
+        return self.validate_metric_type_counter(**kwargs)
+
+
+    def validate_metric_type_rate(
         self,
         **kwargs
     ):
@@ -57,6 +67,15 @@ class LotusMetric(ApiModel):
 
         assert self.usage_aggregation_type in [MetricAggregation.counter, MetricAggregation.max, MetricAggregation.unique, MetricAggregation.sum], "usage_aggregation_type must be one of counter, max, unique, sum"
         assert self.granularity in [MetricGranularity.days, MetricGranularity.hours, MetricGranularity.minutes], "granularity must be one of days, hours, minutes"
+
+    async def async_validate_metric_type_rate(
+        self,
+        **kwargs
+    ):
+        """
+        Validate the metric type is rate
+        """
+        return self.validate_metric_type_rate(**kwargs)
 
     async def validate_property_name_in_filters(
         self,
@@ -72,7 +91,16 @@ class LotusMetric(ApiModel):
         if self.numeric_filters is not None:
             assert self.property_name in [f.property_name for f in self.numeric_filters], "property_name must be in numeric_filters"
 
-    async def validate_metric_type_stateful(
+    async def async_validate_property_name_in_filters(
+        self,
+        **kwargs
+    ):
+        """
+        Validate the property_name is in filters
+        """
+        return self.validate_property_name_in_filters(**kwargs)
+
+    def validate_metric_type_stateful(
         self,
         **kwargs
     ):
@@ -84,13 +112,21 @@ class LotusMetric(ApiModel):
         
         if usage_aggregation_type is None: usage_aggregation_type = MetricAggregation.max
         assert usage_aggregation_type in [MetricAggregation.max, MetricAggregation.latest], "usage_aggregation_type must be one of max, latest"
-        await self.validate_property_name_in_filters()
+        self.validate_property_name_in_filters()
 
         assert self.event_type in [EventType.total, EventType.delta], "event_type must be total or delta"
         if self.granularity is None: self.granularity = MetricGranularity.days
     
-
-    async def validate_params(
+    async def async_validate_metric_type_stateful(
+        self,
+        **kwargs
+    ):
+        """
+        Validate the metric type is stateful
+        """
+        return self.validate_metric_type_stateful(**kwargs)
+    
+    def validate_params(
         self,
         api_method: ApiMethod,
         items: Optional[List[Type['LotusMetric']]] = None,
@@ -109,11 +145,41 @@ class LotusMetric(ApiModel):
             if self.properties is None: self.properties = {}
             if self.event_type is None: self.event_type = EventType.total
             if self.metric_type == MetricType.counter:
-                await self.validate_metric_type_counter()
+                self.validate_metric_type_counter()
             elif self.metric_type == MetricType.rate:
-                await self.validate_metric_type_rate()
+                self.validate_metric_type_rate()
             elif self.metric_type == MetricType.stateful:
-                await self.validate_metric_type_stateful()
+                self.validate_metric_type_stateful()
+        
+        if api_method in {ApiMethod.GET, ApiMethod.GET_DETAIL, ApiMethod.UPDATE, ApiMethod.DELETE, ApiMethod.CHANGE}:
+            require("metric_id", self.metric_id, ID_TYPES)
+            self.item_id = self.metric_id
+    
+
+    async def async_validate_params(
+        self,
+        api_method: ApiMethod,
+        items: Optional[List[Type['LotusMetric']]] = None,
+        itemized: bool = False,
+        **kwargs
+    ) -> None:
+        """Validate the message and ensure all required fields are present."""
+
+        if self.filters:
+            self.numeric_filters, self.categorical_filters = Filter.get_filters(filters=self.filters).values()
+            self.filters = None
+
+        if api_method in {ApiMethod.CREATE, ApiMethod.UPDATE}:
+            require("metric_name", self.metric_name, str)
+            if self.event_name is None: self.event_name = self.metric_name
+            if self.properties is None: self.properties = {}
+            if self.event_type is None: self.event_type = EventType.total
+            if self.metric_type == MetricType.counter:
+                await self.async_validate_metric_type_counter()
+            elif self.metric_type == MetricType.rate:
+                await self.async_validate_metric_type_rate()
+            elif self.metric_type == MetricType.stateful:
+                await self.async_validate_metric_type_stateful()
         
         if api_method in {ApiMethod.GET, ApiMethod.GET_DETAIL, ApiMethod.UPDATE, ApiMethod.DELETE, ApiMethod.CHANGE}:
             require("metric_id", self.metric_id, ID_TYPES)
