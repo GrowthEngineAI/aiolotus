@@ -1,6 +1,6 @@
 import time
 import json
-import httpx
+import aiohttpx
 import asyncio
 
 from typing import Optional, Dict, Any, Callable, List
@@ -17,7 +17,7 @@ class LotusWorker:
     def __init__(
         self,
         queue: asyncio.Queue,
-        client: httpx.AsyncClient,
+        client: aiohttpx.Client,
         headers: Dict[str, Any],
         endpoint: str = '/api/track/',
         flush_at: Optional[int] = None,
